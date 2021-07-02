@@ -1,5 +1,9 @@
-use crossterm::{cursor, style::Print, terminal, QueueableCommand};
-use game_of_life::Game;
+use crossterm::{
+    cursor,
+    style::{Colorize, PrintStyledContent},
+    terminal, QueueableCommand,
+};
+use game_of_life::{Cell, DeathState, Game, LivingState};
 use std::{
     env,
     io::{stdout, Write},
@@ -55,9 +59,37 @@ fn main() -> crossterm::Result<()> {
         if counter >= delay / MAIN_LOOP_TIMEOUT {
             stdout
                 .queue(terminal::Clear(terminal::ClearType::All))?
-                .queue(cursor::MoveTo(0, 0))?
-                .queue(Print(&game))?
-                .flush()?;
+                .queue(cursor::MoveTo(0, 0))?;
+            let grid = game.get_grid();
+            for i in 0..height {
+                for j in 0..width {
+                    stdout.queue(cursor::MoveTo(j as u16, i as u16))?;
+                    if let Some(cell) = grid.get(i * width + j) {
+                        match cell {
+                            Cell::Alive(state) => match state {
+                                LivingState::Remains => {
+                                    stdout.queue(PrintStyledContent("◼".white()))?;
+                                }
+                                LivingState::Reproduction => {
+                                    stdout.queue(PrintStyledContent("◼".yellow()))?;
+                                }
+                            },
+                            Cell::Dead(state) => match state {
+                                DeathState::Remains => {
+                                    stdout.queue(PrintStyledContent(" ".black()))?;
+                                }
+                                DeathState::Overpopulation => {
+                                    stdout.queue(PrintStyledContent("x".red()))?;
+                                }
+                                DeathState::Underpopulation => {
+                                    stdout.queue(PrintStyledContent("x".cyan()))?;
+                                }
+                            },
+                        }
+                    }
+                }
+            }
+            stdout.flush()?;
             game.tick();
             counter = 0
         } else {
