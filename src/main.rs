@@ -5,6 +5,7 @@ use crossterm::{
 };
 use game_of_life::{Cell, DeathState, Game, LivingState};
 use std::{
+    cmp::min,
     env,
     io::{stdout, Write},
     sync::{
@@ -61,8 +62,8 @@ fn main() -> crossterm::Result<()> {
                 .queue(terminal::Clear(terminal::ClearType::All))?
                 .queue(cursor::MoveTo(0, 0))?;
             let grid = game.get_grid();
-            for i in 0..height {
-                for j in 0..width {
+            for i in 0..min(height, default_height) {
+                for j in 0..min(width, default_width) {
                     stdout.queue(cursor::MoveTo(j as u16, i as u16))?;
                     if let Some(cell) = grid.get(i * width + j) {
                         match cell {
