@@ -40,8 +40,8 @@ impl Game {
     fn init(width: usize, height: usize) -> Grid {
         let mut grid: Grid = Vec::with_capacity(width * height);
         let mut rng = rand::thread_rng();
-        for _ in 0..width {
-            for _ in 0..height {
+        for _ in 0..=width {
+            for _ in 0..=height {
                 let cell = rng.gen::<Cell>();
                 grid.push(cell);
             }
@@ -53,46 +53,64 @@ impl Game {
         for i in 0..self.height {
             for j in 0..self.width {
                 let mut neighbours = 0;
-                if i > 0 && j > 0 {
-                    if let Some(c) = self.grid.get((i - 1) * self.width + j - 1) {
-                        if let &Cell::Alive(_) = c {
-                            neighbours += 1
+                if j > 0 {
+                    if i > 0 {
+                        // nw
+                        if let Some(c) = self.grid.get((i - 1) * self.width + j - 1) {
+                            if let &Cell::Alive(_) = c {
+                                neighbours += 1
+                            }
                         }
                     }
-                }
-                if j > 0 {
+                    // w
                     if let Some(c) = self.grid.get(i * self.width + (j - 1)) {
                         if let &Cell::Alive(_) = c {
                             neighbours += 1
                         }
                     }
-                    if let Some(c) = self.grid.get((i + 1) * self.width + (j - 1)) {
+                    if i < self.height - 1 {
+                        // sw
+                        if let Some(c) = self.grid.get((i + 1) * self.width + (j - 1)) {
+                            if let &Cell::Alive(_) = c {
+                                neighbours += 1
+                            }
+                        }
+                    }
+                }
+                if j < self.width - 1 {
+                    if i > 0 {
+                        // ne
+                        if let Some(c) = self.grid.get((i - 1) * self.width + (j + 1)) {
+                            if let &Cell::Alive(_) = c {
+                                neighbours += 1
+                            }
+                        }
+                    }
+                    // e
+                    if let Some(c) = self.grid.get(i * self.width + (j + 1)) {
                         if let &Cell::Alive(_) = c {
                             neighbours += 1
                         }
                     }
-                }
-                if let Some(c) = self.grid.get((i + 1) * self.width + j) {
-                    if let &Cell::Alive(_) = c {
-                        neighbours += 1
+                    if i < self.height - 1 {
+                        // se
+                        if let Some(c) = self.grid.get((i + 1) * self.width + (j + 1)) {
+                            if let &Cell::Alive(_) = c {
+                                neighbours += 1
+                            }
+                        }
                     }
                 }
-                if let Some(c) = self.grid.get((i + 1) * self.width + (j + 1)) {
-                    if let &Cell::Alive(_) = c {
-                        neighbours += 1
-                    }
-                }
-                if let Some(c) = self.grid.get(i * self.width + (j + 1)) {
-                    if let &Cell::Alive(_) = c {
-                        neighbours += 1
+                if i < self.height - 1 {
+                    // s
+                    if let Some(c) = self.grid.get((i + 1) * self.width + j) {
+                        if let &Cell::Alive(_) = c {
+                            neighbours += 1
+                        }
                     }
                 }
                 if i > 0 {
-                    if let Some(c) = self.grid.get((i - 1) * self.width + (j + 1)) {
-                        if let &Cell::Alive(_) = c {
-                            neighbours += 1
-                        }
-                    }
+                    // n
                     if let Some(c) = self.grid.get((i - 1) * self.width + j) {
                         if let &Cell::Alive(_) = c {
                             neighbours += 1
