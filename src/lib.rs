@@ -135,7 +135,7 @@ impl Game {
                         | Cell::Dead(DeathState::Underpopulation) => {
                             Cell::Dead(DeathState::Remains)
                         }
-                        _ => cell.clone(),
+                        _ => cell,
                     },
                 }
             })

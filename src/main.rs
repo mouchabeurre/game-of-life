@@ -58,9 +58,7 @@ fn main() -> crossterm::Result<()> {
             break 'outer;
         }
         if counter >= delay / MAIN_LOOP_TIMEOUT {
-            stdout
-                .queue(terminal::Clear(terminal::ClearType::All))?
-                .queue(cursor::MoveTo(0, 0))?;
+            stdout.queue(cursor::MoveTo(0, 0))?;
             let grid = game.get_grid();
             for i in 0..min(height, default_height) {
                 for j in 0..min(width, default_width) {
