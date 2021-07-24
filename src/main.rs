@@ -53,15 +53,19 @@ fn main() -> crossterm::Result<()> {
         .flush()?;
 
     let mut counter = delay / MAIN_LOOP_TIMEOUT + 1;
+    let mut profiler: Vec<u128> = Vec::new();
+    let term_width = min(width, default_width);
+    let term_height = min(height, default_height);
     'outer: loop {
         if !running.load(Ordering::SeqCst) {
             break 'outer;
         }
         if counter >= delay / MAIN_LOOP_TIMEOUT {
+            let now = time::SystemTime::now();
             stdout.queue(cursor::MoveTo(0, 0))?;
             let grid = game.get_grid();
-            for i in 0..min(height, default_height) {
-                for j in 0..min(width, default_width) {
+            for i in 0..term_height {
+                for j in 0..term_width {
                     stdout.queue(cursor::MoveTo(j as u16, i as u16))?;
                     if let Some(cell) = grid.get(i * width + j) {
                         match cell {
@@ -88,12 +92,14 @@ fn main() -> crossterm::Result<()> {
                     }
                 }
             }
-            stdout.flush()?;
             game.tick();
-            counter = 0
+            counter = 0;
+            let elapsed = now.elapsed().unwrap();
+            profiler.push(elapsed.as_millis());
         } else {
             counter += 1;
         }
+        stdout.flush()?;
         thread::sleep(timeout);
     }
 
@@ -101,5 +107,19 @@ fn main() -> crossterm::Result<()> {
         .queue(cursor::Show)?
         .queue(terminal::LeaveAlternateScreen)?
         .flush()?;
+
+    profiler.sort();
+    profiler.reverse();
+
+    let results: Vec<_> = vec![0.99, 0.95, 0.5, 0.05, 0.01]
+        .into_iter()
+        .map(|p| {
+            let delay = profiler
+                .get((p * (profiler.len() as f64)) as usize)
+                .unwrap();
+            (p, delay)
+        })
+        .collect();
+    println!("{:?}", results);
     Ok(())
 }

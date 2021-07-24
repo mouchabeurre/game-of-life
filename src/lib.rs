@@ -3,6 +3,7 @@ use rand::{
     Rng,
 };
 use rayon::prelude::*;
+use std::convert::TryInto;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum LivingState {
@@ -47,6 +48,80 @@ impl Game {
         }
         grid
     }
+    fn live_neighbour_count1(&self, row: usize, col: usize) -> u8 {
+        let mut count = 0;
+        if col > 0 {
+            if row > 0 {
+                // nw
+                if let Some(&Cell::Alive(_)) = self.grid.get((row - 1) * self.width + col - 1) {
+                    count += 1
+                }
+            }
+            // w
+            if let Some(&Cell::Alive(_)) = self.grid.get(row * self.width + (col - 1)) {
+                count += 1
+            }
+            if row < self.height - 1 {
+                // sw
+                if let Some(&Cell::Alive(_)) = self.grid.get((row + 1) * self.width + (col - 1)) {
+                    count += 1
+                }
+            }
+        }
+        if col < self.width - 1 {
+            if row > 0 {
+                // ne
+                if let Some(&Cell::Alive(_)) = self.grid.get((row - 1) * self.width + (col + 1)) {
+                    count += 1
+                }
+            }
+            // e
+            if let Some(&Cell::Alive(_)) = self.grid.get(row * self.width + (col + 1)) {
+                count += 1
+            }
+            if row < self.height - 1 {
+                // se
+                if let Some(&Cell::Alive(_)) = self.grid.get((row + 1) * self.width + (col + 1)) {
+                    count += 1
+                }
+            }
+        }
+        if row < self.height - 1 {
+            // s
+            if let Some(&Cell::Alive(_)) = self.grid.get((row + 1) * self.width + col) {
+                count += 1
+            }
+        }
+        if row > 0 {
+            // n
+            if let Some(&Cell::Alive(_)) = self.grid.get((row - 1) * self.width + col) {
+                count += 1
+            }
+        }
+        count
+    }
+    fn _live_neighbour_count2(&self, row: usize, col: usize) -> u8 {
+        let mut count = 0;
+        for i in [-1, 0, 1].iter() {
+            if let Ok(n_row) = TryInto::<usize>::try_into((row as i32) + i) {
+                for j in [-1, 0, 1].iter() {
+                    if *i == 0 && *j == 0 {
+                        continue;
+                    }
+                    if let Ok(n_col) = TryInto::<usize>::try_into((col as i32) + j) {
+                        if let Some(&Cell::Alive(_)) = self.grid.get(n_row * self.width + n_col) {
+                            count += 1
+                        }
+                    } else {
+                        continue;
+                    }
+                }
+            } else {
+                continue;
+            }
+        }
+        count
+    }
     fn compute_next(&self) -> Grid {
         let next_grid = self.grid.clone();
         next_grid
@@ -55,77 +130,12 @@ impl Game {
             .map(|(x, cell)| {
                 let i = x / self.width;
                 let j = x % self.width;
-                let mut neighbours = 0;
-                if j > 0 {
-                    if i > 0 {
-                        // nw
-                        if let Some(c) = self.grid.get((i - 1) * self.width + j - 1) {
-                            if let &Cell::Alive(_) = c {
-                                neighbours += 1
-                            }
-                        }
-                    }
-                    // w
-                    if let Some(c) = self.grid.get(i * self.width + (j - 1)) {
-                        if let &Cell::Alive(_) = c {
-                            neighbours += 1
-                        }
-                    }
-                    if i < self.height - 1 {
-                        // sw
-                        if let Some(c) = self.grid.get((i + 1) * self.width + (j - 1)) {
-                            if let &Cell::Alive(_) = c {
-                                neighbours += 1
-                            }
-                        }
-                    }
-                }
-                if j < self.width - 1 {
-                    if i > 0 {
-                        // ne
-                        if let Some(c) = self.grid.get((i - 1) * self.width + (j + 1)) {
-                            if let &Cell::Alive(_) = c {
-                                neighbours += 1
-                            }
-                        }
-                    }
-                    // e
-                    if let Some(c) = self.grid.get(i * self.width + (j + 1)) {
-                        if let &Cell::Alive(_) = c {
-                            neighbours += 1
-                        }
-                    }
-                    if i < self.height - 1 {
-                        // se
-                        if let Some(c) = self.grid.get((i + 1) * self.width + (j + 1)) {
-                            if let &Cell::Alive(_) = c {
-                                neighbours += 1
-                            }
-                        }
-                    }
-                }
-                if i < self.height - 1 {
-                    // s
-                    if let Some(c) = self.grid.get((i + 1) * self.width + j) {
-                        if let &Cell::Alive(_) = c {
-                            neighbours += 1
-                        }
-                    }
-                }
-                if i > 0 {
-                    // n
-                    if let Some(c) = self.grid.get((i - 1) * self.width + j) {
-                        if let &Cell::Alive(_) = c {
-                            neighbours += 1
-                        }
-                    }
-                }
-
+                let neighbour_count = self.live_neighbour_count1(i, j);
                 let alive = match cell {
                     Cell::Alive(_) => true,
                     _ => false,
                 };
-                match neighbours {
+                match neighbour_count {
                     0..=1 if alive => Cell::Dead(DeathState::Underpopulation),
                     4..=8 if alive => Cell::Dead(DeathState::Overpopulation),
                     3 if !alive => Cell::Alive(LivingState::Reproduction),
@@ -149,8 +159,8 @@ impl Game {
             grid,
         }
     }
-    pub fn get_grid(&self) -> Grid {
-        self.grid.clone()
+    pub fn get_grid(&self) -> &Grid {
+        &self.grid
     }
     pub fn tick(&mut self) {
         let next_grid = self.compute_next();
