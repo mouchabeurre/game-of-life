@@ -1,9 +1,11 @@
-use rand::{
-    distributions::{Distribution, Standard},
-    Rng,
-};
+use rand::Rng;
 use rayon::prelude::*;
 use std::convert::TryInto;
+
+pub enum GridInitialization {
+    Random(f64),
+    Custom(Grid),
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum LivingState {
@@ -21,16 +23,6 @@ pub enum Cell {
     Alive(LivingState),
     Dead(DeathState),
 }
-impl Distribution<Cell> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Cell {
-        if rng.gen_bool(0.5) {
-            Cell::Alive(LivingState::Remains)
-        } else {
-            Cell::Dead(DeathState::Remains)
-        }
-    }
-}
-
 type Grid = Vec<Cell>;
 
 pub struct Game {
@@ -39,14 +31,17 @@ pub struct Game {
     grid: Grid,
 }
 impl Game {
-    fn init(width: usize, height: usize) -> Grid {
-        let mut grid: Grid = Vec::with_capacity(width * height);
-        let mut rng = rand::thread_rng();
-        for _ in 0..width * height {
-            let cell: Cell = rng.gen();
-            grid.push(cell);
-        }
-        grid
+    fn init_rand(width: usize, height: usize, distribution: f64) -> Grid {
+        (0..width * height)
+            .into_par_iter()
+            .map(|_| {
+                if rand::thread_rng().gen_bool(distribution) {
+                    Cell::Alive(LivingState::Remains)
+                } else {
+                    Cell::Dead(DeathState::Remains)
+                }
+            })
+            .collect()
     }
     fn live_neighbour_count1(&self, row: usize, col: usize) -> u8 {
         let mut count = 0;
@@ -151,8 +146,16 @@ impl Game {
             })
             .collect()
     }
-    pub fn new(width: usize, height: usize) -> Self {
-        let grid = Self::init(width, height);
+    pub fn new(width: usize, height: usize, init: GridInitialization) -> Self {
+        let grid = match init {
+            GridInitialization::Random(distribution) => {
+                Self::init_rand(width, height, distribution)
+            }
+            GridInitialization::Custom(grid) => {
+                assert_eq!(width * height, grid.len());
+                grid
+            }
+        };
         Self {
             width,
             height,
@@ -166,4 +169,51 @@ impl Game {
         let next_grid = self.compute_next();
         self.grid = next_grid;
     }
+}
+
+#[test]
+fn test_game_rules() {
+    let width: usize = 3;
+    let height: usize = 4;
+    /*
+    xox
+    xxo
+    ooo
+    xxx
+    */
+    let start_grid: Grid = (0..width * height)
+        .enumerate()
+        .map(|(x, _)| {
+            let xy = (x % width, x / width);
+            if xy == (1, 0) || xy == (2, 1) || xy == (0, 2) || xy == (1, 2) || xy == (2, 2) {
+                Cell::Alive(LivingState::Remains)
+            } else {
+                Cell::Dead(DeathState::Remains)
+            }
+        })
+        .collect();
+    /*
+    xxx
+    oxo
+    xoo
+    xox
+    */
+    let next_grid: Grid = (0..width * height)
+        .enumerate()
+        .map(|(x, _)| {
+            let xy = (x % width, x / width);
+            if xy == (2, 1) || xy == (1, 2) || xy == (2, 2) {
+                Cell::Alive(LivingState::Remains)
+            } else if xy == (0, 1) || xy == (1, 3) {
+                Cell::Alive(LivingState::Reproduction)
+            } else if xy == (1, 0) || xy == (0, 2) {
+                Cell::Dead(DeathState::Underpopulation)
+            } else {
+                Cell::Dead(DeathState::Remains)
+            }
+        })
+        .collect();
+    let mut game = Game::new(width, height, GridInitialization::Custom(start_grid));
+    game.tick();
+    assert_eq!(&next_grid, game.get_grid());
 }

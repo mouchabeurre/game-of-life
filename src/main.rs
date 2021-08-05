@@ -3,7 +3,7 @@ use crossterm::{
     style::{Colorize, PrintStyledContent},
     terminal, QueueableCommand,
 };
-use game_of_life::{Cell, DeathState, Game, LivingState};
+use game_of_life::{Cell, DeathState, Game, GridInitialization, LivingState};
 use std::{
     cmp::min,
     env,
@@ -18,6 +18,7 @@ use std::{
 fn main() -> crossterm::Result<()> {
     const MAIN_LOOP_TIMEOUT: u64 = 10;
     const DEFAULT_DELAY: u64 = 100;
+    const DEFAULT_DISTRIBUTION: f64 = 0.5;
     let term_geom = terminal::size().unwrap();
     let default_width = term_geom.0 as usize;
     let default_height = term_geom.1 as usize;
@@ -35,6 +36,10 @@ fn main() -> crossterm::Result<()> {
         Some(d) => d.parse().unwrap_or(DEFAULT_DELAY),
         None => DEFAULT_DELAY,
     };
+    let distribution: f64 = match args.get(4) {
+        Some(d) => d.parse().unwrap_or(DEFAULT_DISTRIBUTION),
+        None => DEFAULT_DISTRIBUTION,
+    };
     let timeout = time::Duration::from_millis(MAIN_LOOP_TIMEOUT);
 
     let running = Arc::new(AtomicBool::new(true));
@@ -44,7 +49,7 @@ fn main() -> crossterm::Result<()> {
     })
     .unwrap();
 
-    let mut game = Game::new(width, height);
+    let mut game = Game::new(width, height, GridInitialization::Random(distribution));
 
     let mut stdout = stdout();
     stdout
