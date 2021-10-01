@@ -31,11 +31,11 @@ pub struct Game {
     grid: Grid,
 }
 impl Game {
-    fn init_rand(width: usize, height: usize, distribution: f64) -> Grid {
+    fn init_rand(width: usize, height: usize, probability: f64) -> Grid {
         (0..width * height)
             .into_par_iter()
             .map(|_| {
-                if rand::thread_rng().gen_bool(distribution) {
+                if rand::thread_rng().gen_bool(probability) {
                     Cell::Alive(LivingState::Remains)
                 } else {
                     Cell::Dead(DeathState::Remains)
@@ -126,9 +126,10 @@ impl Game {
                 let i = x / self.width;
                 let j = x % self.width;
                 let neighbour_count = self.live_neighbour_count1(i, j);
-                let alive = match cell {
-                    Cell::Alive(_) => true,
-                    _ => false,
+                let alive = if let Cell::Alive(_) = cell {
+                    true
+                } else {
+                    false
                 };
                 match neighbour_count {
                     0..=1 if alive => Cell::Dead(DeathState::Underpopulation),
@@ -148,11 +149,13 @@ impl Game {
     }
     pub fn new(width: usize, height: usize, init: GridInitialization) -> Self {
         let grid = match init {
-            GridInitialization::Random(distribution) => {
-                Self::init_rand(width, height, distribution)
-            }
+            GridInitialization::Random(probability) => Self::init_rand(width, height, probability),
             GridInitialization::Custom(grid) => {
-                assert_eq!(width * height, grid.len());
+                assert_eq!(
+                    width * height,
+                    grid.len(),
+                    "custom grid has expected dimensions"
+                );
                 grid
             }
         };
@@ -175,7 +178,7 @@ impl Game {
 fn test_game_rules() {
     let width: usize = 3;
     let height: usize = 4;
-    /*
+    /* "x" is "dead"
     xox
     xxo
     ooo
